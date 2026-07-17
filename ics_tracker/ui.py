@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from .auth import logout_control, require_login
+from .auth import greeting, logout_control, require_login
 from .checkoff import load_checkoff, save_checkoff
 from .config import (ALL_STAGES, ASSESS_LINE_COLOR, AUDIT_LINE_COLOR,
                      BOD_LINE_COLOR, PREP_AUDIT, PREP_COLORS, PREP_ORDER,
@@ -15,17 +15,23 @@ from .parsing import _fmt
 
 
 def run():
-    st.set_page_config(page_title="ICS FS Process Tracker",
+    st.set_page_config(page_title="ICS FS Timeline Tracker",
                        page_icon="📊", layout="wide")
     require_login()  # inert until [auth] secrets exist; then gates the app
 
     # ----- Sidebar: data source -------------------------------------------- #
     st.sidebar.title("📊 ICS FS Tracker")
-    logout_control()
     uploaded = st.sidebar.file_uploader("Upload tracker workbook (.xlsx)",
                                         type=["xlsx"])
+
+    # Personalised greeting in the MAIN area (shown once signed in).
+    hello = greeting()
+    if hello:
+        st.markdown(f"## {hello}")
+
     if uploaded is None:
         st.info("👋 Upload your tracker workbook (.xlsx) in the sidebar to begin.")
+        logout_control()   # signed-in + log out, pinned to the bottom-left
         st.stop()
 
     ye_df, val_df = load_data(uploaded)
@@ -267,3 +273,6 @@ def run():
                     "Business days", "Board mtg / audit deadline",
                     "Assessment deadline", "Owner", "Auditor"]
             st.dataframe(summary[cols], hide_index=True, width="stretch")
+
+    # Signed-in caption + log out, last so it pins to the sidebar bottom-left.
+    logout_control()
