@@ -397,14 +397,53 @@ def save_checkoff(state):
 
 
 # --------------------------------------------------------------------------- #
+# Authentication (Microsoft Entra ID via st.login / st.user)
+# --------------------------------------------------------------------------- #
+def _auth_configured():
+    """True only when an [auth] section is present in secrets.
+
+    This keeps the login gate INERT until secrets are added: deploy first with
+    no [auth] block and the app is open; add the [auth] secrets later and the
+    gate switches on automatically — no code change needed.
+    """
+    try:
+        return "auth" in st.secrets
+    except Exception:
+        return False
+
+
+def require_login():
+    """Block the app behind Microsoft sign-in when auth is configured."""
+    if not _auth_configured():
+        return  # auth not set up yet -> app stays open (deploy-first mode)
+    # Fail closed: if login state is unavailable for any reason, require sign-in.
+    if not getattr(st.user, "is_logged_in", False):
+        st.title("📊 ICS FS Process Tracker")
+        st.write("Please sign in with your Microsoft work account to continue.")
+        st.button("🔐 Log in with Microsoft", type="primary", on_click=st.login)
+        st.stop()
+
+
+def logout_control():
+    """Show who's signed in, plus a logout button (only when auth is on)."""
+    if not _auth_configured() or not getattr(st.user, "is_logged_in", False):
+        return
+    who = getattr(st.user, "name", None) or getattr(st.user, "email", "account")
+    st.sidebar.caption(f"Signed in as **{who}**")
+    st.sidebar.button("Log out", on_click=st.logout)
+
+
+# --------------------------------------------------------------------------- #
 # UI
 # --------------------------------------------------------------------------- #
 def main():
     st.set_page_config(page_title="ICS FS Process Tracker",
                        page_icon="📊", layout="wide")
+    require_login()  # inert until [auth] secrets exist; then gates the app
 
     # ----- Sidebar: data source -------------------------------------------- #
     st.sidebar.title("📊 ICS FS Tracker")
+    logout_control()
     uploaded = st.sidebar.file_uploader("Upload tracker workbook (.xlsx)",
                                         type=["xlsx"])
     if uploaded is None:

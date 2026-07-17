@@ -1,0 +1,12 @@
+# Streamlit configuration shared by local and deployed runs.
+# Secrets are NOT stored here — they live in the git-ignored secrets.toml
+# (see secrets.toml.example). This file is safe to commit.
+
+[browser]
+# Don't send anonymous usage statistics to Streamlit.
+gatherUsageStats = false
+
+# Optional: uncomment to pin one theme for all viewers. Left commented so the
+# viewer's own light/dark preference wins.
+# [theme]
+# base = "dark"
