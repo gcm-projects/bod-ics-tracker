@@ -35,8 +35,15 @@ def _user_identifiers():
 
 
 def _domain_ok(email):
-    """True if one email/UPN string belongs to an allowed org domain."""
+    """True if one email/UPN is a clean org-domain account (not a B2B guest).
+
+    B2B guest UPNs look like `user_gmail.com#EXT#@yourtenant` — if the tenant
+    domain is the allowed one, that string would otherwise pass the endswith
+    check, so guests are rejected explicitly via the #EXT# marker.
+    """
     email = str(email or "").strip().lower()
+    if "#ext#" in email:
+        return False
     return email.endswith(tuple(f"@{d.lower()}" for d in ALLOWED_EMAIL_DOMAINS))
 
 
@@ -55,6 +62,8 @@ def require_login():
         st.stop()
     # Signed in — restrict to the organisation's email domain(s). Blocks Gmail
     # / personal / guest accounts even if the Entra config lets them through.
+    # TEMP diagnostic (remove later): identifiers go to Community Cloud logs.
+    print(f"[auth] login identifiers={_user_identifiers()}", flush=True)
     if not _email_allowed():
         _access_denied_screen()
         st.stop()
