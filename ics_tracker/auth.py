@@ -116,12 +116,9 @@ def _access_denied_screen():
     # container (deterministic st-key class) to the vertical centre.
     st.markdown(
         "<style>.st-key-denied_box{position:fixed;top:50%;left:0;right:0;"
-        "transform:translateY(-50%)}"
-        ".st-key-denied_box button{display:block!important;width:fit-content"
-        "!important;margin-left:auto!important;margin-right:auto!important}"
-        "</style>",
+        "transform:translateY(-50%)}</style>",
         unsafe_allow_html=True)
-    with st.container(key="denied_box"):
+    with st.container(key="denied_box", horizontal_alignment="center"):
         st.markdown(
             "<div style='text-align:center'>"
             "<div style='font-size:3.4rem;line-height:1'>🚫</div>"
