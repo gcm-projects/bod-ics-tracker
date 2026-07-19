@@ -107,7 +107,8 @@ def _access_denied_screen():
     # container (deterministic st-key class) to the vertical centre.
     st.markdown(
         "<style>.st-key-denied_box{position:fixed;top:50%;left:0;right:0;"
-        "transform:translateY(-50%)}</style>",
+        "transform:translateY(-50%)}"
+        ".st-key-denied_box .stButton{display:flex;justify-content:center}</style>",
         unsafe_allow_html=True)
     with st.container(key="denied_box"):
         st.markdown(
@@ -120,9 +121,7 @@ def _access_denied_screen():
             f"({html.escape(allowed)}) account.<br>Please sign out and use your "
             "work account.</p></div>",
             unsafe_allow_html=True)
-        _, bc, _ = st.columns([2, 1, 2])
-        with bc:
-            st.button("Sign out", type="primary", on_click=st.logout)
+        st.button("Sign out", type="primary", on_click=st.logout)
 
 
 def greeting():
