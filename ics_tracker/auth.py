@@ -5,7 +5,15 @@ with no [auth] block and the app is open; add the secrets later and the gate
 switches on automatically — no code change needed.
 """
 
+import html
+
 import streamlit as st
+
+# Only these email domains may use the app. Defence-in-depth on top of the
+# single-tenant Entra registration: even if Azure is ever misconfigured
+# (multi-tenant, guests, wrong metadata URL), non-org accounts are blocked
+# here. Case-insensitive, exact-domain match.
+ALLOWED_EMAIL_DOMAINS = ("global.ky",)
 
 
 def _auth_configured():
@@ -16,6 +24,27 @@ def _auth_configured():
         return False
 
 
+def _user_identifiers():
+    """Lower-cased email / UPN identifiers from the signed-in user's token."""
+    ids = []
+    for key in ("email", "preferred_username", "upn", "unique_name"):
+        v = getattr(st.user, key, None)
+        if v:
+            ids.append(str(v).strip().lower())
+    return ids
+
+
+def _domain_ok(email):
+    """True if one email/UPN string belongs to an allowed org domain."""
+    email = str(email or "").strip().lower()
+    return email.endswith(tuple(f"@{d.lower()}" for d in ALLOWED_EMAIL_DOMAINS))
+
+
+def _email_allowed():
+    """True only if the signed-in user has an allowed org-domain identifier."""
+    return any(_domain_ok(i) for i in _user_identifiers())
+
+
 def require_login():
     """Block the app behind Microsoft sign-in when auth is configured."""
     if not _auth_configured():
@@ -23,6 +52,11 @@ def require_login():
     # Fail closed: if login state is unavailable for any reason, require sign-in.
     if not getattr(st.user, "is_logged_in", False):
         _login_screen()
+        st.stop()
+    # Signed in — restrict to the organisation's email domain(s). Blocks Gmail
+    # / personal / guest accounts even if the Entra config lets them through.
+    if not _email_allowed():
+        _access_denied_screen()
         st.stop()
 
 
@@ -63,6 +97,26 @@ def _login_screen():
     with bc:
         st.button("🔐 Log in with Microsoft", type="primary",
                   width="stretch", on_click=st.login)
+
+
+def _access_denied_screen():
+    """Shown to a signed-in user whose email is outside the allowed domain(s)."""
+    who = next(iter(_user_identifiers()), "your account")
+    allowed = " / ".join(f"@{d}" for d in ALLOWED_EMAIL_DOMAINS)
+    st.markdown("<div style='height:16vh'></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='text-align:center'>"
+        "<div style='font-size:3.4rem;line-height:1'>🚫</div>"
+        "<h1 style='margin:.5rem 0 .2rem;font-weight:800;color:#ef4444'>"
+        "Access restricted</h1>"
+        "<p style='color:gray;margin:0 0 1.4rem'>"
+        f"<b>{html.escape(who)}</b> isn't a Global Captive Management "
+        f"({html.escape(allowed)}) account. Please sign out and use your work "
+        "account.</p></div>",
+        unsafe_allow_html=True)
+    _, bc, _ = st.columns([2, 1, 2])
+    with bc:
+        st.button("Sign out", type="primary", on_click=st.logout)
 
 
 def greeting():
