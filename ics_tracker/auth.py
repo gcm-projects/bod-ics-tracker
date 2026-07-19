@@ -103,20 +103,26 @@ def _access_denied_screen():
     """Shown to a signed-in user whose email is outside the allowed domain(s)."""
     who = next(iter(_user_identifiers()), "your account")
     allowed = " / ".join(f"@{d}" for d in ALLOWED_EMAIL_DOMAINS)
-    st.markdown("<div style='height:16vh'></div>", unsafe_allow_html=True)
+    # Centre the whole block in the middle of the screen by pinning the keyed
+    # container (deterministic st-key class) to the vertical centre.
     st.markdown(
-        "<div style='text-align:center'>"
-        "<div style='font-size:3.4rem;line-height:1'>🚫</div>"
-        "<h1 style='margin:.5rem 0 .2rem;font-weight:800;color:#ef4444'>"
-        "Access restricted</h1>"
-        "<p style='color:gray;margin:0 0 1.4rem'>"
-        f"<b>{html.escape(who)}</b> isn't a Global Captive Management "
-        f"({html.escape(allowed)}) account. Please sign out and use your work "
-        "account.</p></div>",
+        "<style>.st-key-denied_box{position:fixed;top:50%;left:0;right:0;"
+        "transform:translateY(-50%)}</style>",
         unsafe_allow_html=True)
-    _, bc, _ = st.columns([2, 1, 2])
-    with bc:
-        st.button("Sign out", type="primary", on_click=st.logout)
+    with st.container(key="denied_box"):
+        st.markdown(
+            "<div style='text-align:center'>"
+            "<div style='font-size:3.4rem;line-height:1'>🚫</div>"
+            "<h1 style='margin:.5rem 0 .3rem;font-weight:800;color:#ef4444'>"
+            "Access restricted</h1>"
+            "<p style='color:gray;margin:0 0 1.4rem'>"
+            f"<b>{html.escape(who)}</b> isn't a Global Captive Management "
+            f"({html.escape(allowed)}) account.<br>Please sign out and use your "
+            "work account.</p></div>",
+            unsafe_allow_html=True)
+        _, bc, _ = st.columns([2, 1, 2])
+        with bc:
+            st.button("Sign out", type="primary", on_click=st.logout)
 
 
 def greeting():
