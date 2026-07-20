@@ -46,8 +46,11 @@ def _access_token():
 
 
 def _graph_get(path, token, **kwargs):
+    # follow_redirects: the /content endpoint returns a 302 to a pre-signed
+    # SharePoint download URL. httpx strips the Authorization header on that
+    # cross-host redirect, and the URL's own tempauth token authorises it.
     resp = httpx.get(
-        f"{GRAPH}{path}", timeout=_TIMEOUT,
+        f"{GRAPH}{path}", timeout=_TIMEOUT, follow_redirects=True,
         headers={"Authorization": f"Bearer {token}"}, **kwargs)
     resp.raise_for_status()
     return resp
