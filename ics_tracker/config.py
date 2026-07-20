@@ -91,3 +91,17 @@ PREP_COLORS = {
 BOD_LINE_COLOR = "#E4262C"     # red          — board meeting date (BOD)
 AUDIT_LINE_COLOR = "#8ECAE6"   # light blue   — draft audit deadline (year-end)
 ASSESS_LINE_COLOR = "#C77DFF"  # bright purple — assessment deadline
+
+# --------------------------------------------------------------------------- #
+# Data source: the tracker workbook in SharePoint (fetched via Microsoft Graph)
+# --------------------------------------------------------------------------- #
+# WHERE the workbook lives (not secret). The Graph credentials that grant access
+# live in the [sharepoint] secrets section (see secrets.toml.example).
+SP_HOSTNAME = "gcmcan.sharepoint.com"
+SP_SITE_PATH = "/sites/ResourceCenter"
+SP_DRIVE_NAME = "Forms & Templates"           # the document library (Graph drive)
+SP_FILE_PATH = "ICS/Meeting Format and Tracker/Data for tracker ICS.xlsx"
+
+# Local-dev fallback: used ONLY when [sharepoint] secrets are absent and this
+# file exists (git-ignored). Lets you run locally without Graph credentials.
+LOCAL_WORKBOOK_PATH = os.path.join(APP_DIR, "data", "Final - Data for tracker ICS.xlsx")

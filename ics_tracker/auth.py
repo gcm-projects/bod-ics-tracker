@@ -62,8 +62,6 @@ def require_login():
         st.stop()
     # Signed in — restrict to the organisation's email domain(s). Blocks Gmail
     # / personal / guest accounts even if the Entra config lets them through.
-    # TEMP diagnostic (remove later): identifiers go to Community Cloud logs.
-    print(f"[auth] login identifiers={_user_identifiers()}", flush=True)
     if not _email_allowed():
         _access_denied_screen()
         st.stop()

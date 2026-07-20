@@ -1,5 +1,7 @@
 """Data loading (anti-corruption layer): read + clean the workbook sheets."""
 
+import io
+
 import pandas as pd
 import streamlit as st
 
@@ -28,9 +30,14 @@ def _clean_clients(df, base_col):
 def load_data(file_source):
     """Return (year_end_df, valuation_df), cleaned.
 
+    `file_source` may be a path, an uploaded file, or raw bytes (as fetched
+    from SharePoint). Bytes are hashable, so caching keys on the content.
+
     Year End headers sit on the first row; the Valuation sheet's real headers
     sit on the SECOND row (row 1 is the merged "Board meeting 1 / 2" banner).
     """
+    if isinstance(file_source, (bytes, bytearray)):
+        file_source = io.BytesIO(file_source)
     xl = pd.ExcelFile(file_source)
     ye = xl.parse("Year End", header=0)
     val = xl.parse("Valuation date FS", header=1)

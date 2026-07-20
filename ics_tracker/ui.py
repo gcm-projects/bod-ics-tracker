@@ -1,5 +1,7 @@
 """The Streamlit app UI: sidebar, KPIs, timeline chart, check-off, summary."""
 
+import os
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -7,11 +9,13 @@ import streamlit as st
 from .auth import greeting, logout_control, require_login
 from .checkoff import load_checkoff, save_checkoff
 from .config import (ALL_STAGES, ASSESS_LINE_COLOR, AUDIT_LINE_COLOR,
-                     BOD_LINE_COLOR, PREP_AUDIT, PREP_COLORS, PREP_ORDER,
-                     PREP_VAL_1, PREP_VAL_2, PREP_YEAR_END, STAGES_BY_PREP)
+                     BOD_LINE_COLOR, LOCAL_WORKBOOK_PATH, PREP_AUDIT,
+                     PREP_COLORS, PREP_ORDER, PREP_VAL_1, PREP_VAL_2,
+                     PREP_YEAR_END, STAGES_BY_PREP)
 from .data import load_data
 from .model import build_blocks, build_preparations, validate_preparations
 from .parsing import _fmt
+from .sharepoint import fetch_workbook_bytes, sharepoint_configured
 
 
 def run():
@@ -19,22 +23,34 @@ def run():
                        page_icon="📊", layout="wide")
     require_login()  # inert until [auth] secrets exist; then gates the app
 
-    # ----- Sidebar: data source -------------------------------------------- #
+    # ----- Sidebar + greeting ---------------------------------------------- #
     st.sidebar.title("📊 ICS FS Tracker")
-    uploaded = st.sidebar.file_uploader("Upload tracker workbook (.xlsx)",
-                                        type=["xlsx"])
 
     # Personalised greeting in the MAIN area (shown once signed in).
     hello = greeting()
     if hello:
         st.markdown(f"## {hello}")
 
-    if uploaded is None:
-        st.info("👋 Upload your tracker workbook (.xlsx) in the sidebar to begin.")
-        logout_control()   # signed-in + log out, pinned to the bottom-left
+    # ----- Load the tracker workbook --------------------------------------- #
+    # Primary source is SharePoint (via Microsoft Graph). A local file is the
+    # dev-only fallback used when [sharepoint] secrets aren't configured.
+    if sharepoint_configured() and st.sidebar.button("🔄 Refresh data"):
+        fetch_workbook_bytes.clear()   # force a re-fetch from SharePoint
+    try:
+        if sharepoint_configured():
+            ye_df, val_df = load_data(fetch_workbook_bytes())
+        elif os.path.exists(LOCAL_WORKBOOK_PATH):
+            ye_df, val_df = load_data(LOCAL_WORKBOOK_PATH)
+        else:
+            st.error("No data source configured. Add the [sharepoint] secrets "
+                     "(or place a local workbook for dev).")
+            logout_control()
+            st.stop()
+    except Exception as e:
+        st.error(f"Couldn't load the tracker workbook: {e}")
+        logout_control()
         st.stop()
 
-    ye_df, val_df = load_data(uploaded)
     preps_all = build_preparations(ye_df, val_df)
     issues = validate_preparations(ye_df, val_df, preps_all)
 
