@@ -17,6 +17,23 @@ from .model import build_blocks, build_preparations, validate_preparations
 from .parsing import _fmt
 from .sharepoint import fetch_workbook_bytes, sharepoint_configured
 
+# Purple full-height loading screen shown while the workbook is fetched/parsed.
+# Self-contained HTML/CSS (own class + keyframes), so it renders reliably.
+_LOADER_HTML = """
+<div style="display:flex;flex-direction:column;align-items:center;
+            justify-content:center;min-height:65vh;gap:1.2rem">
+  <div class="ics-loader"></div>
+  <div style="color:#a78bfa;font-weight:600;font-size:1.05rem">
+    Loading tracker data…</div>
+</div>
+<style>
+.ics-loader{width:60px;height:60px;border-radius:50%;
+  border:6px solid rgba(139,92,246,.22);border-top-color:#8B5CF6;
+  animation:ics-spin .8s linear infinite}
+@keyframes ics-spin{to{transform:rotate(360deg)}}
+</style>
+"""
+
 
 def run():
     st.set_page_config(page_title="ICS FS Timeline Tracker",
@@ -36,20 +53,25 @@ def run():
     # dev-only fallback used when [sharepoint] secrets aren't configured.
     if sharepoint_configured() and st.sidebar.button("🔄 Refresh data"):
         fetch_workbook_bytes.clear()   # force a re-fetch from SharePoint
+    loader = st.empty()
+    loader.markdown(_LOADER_HTML, unsafe_allow_html=True)  # purple spinner
     try:
         if sharepoint_configured():
             ye_df, val_df = load_data(fetch_workbook_bytes())
         elif os.path.exists(LOCAL_WORKBOOK_PATH):
             ye_df, val_df = load_data(LOCAL_WORKBOOK_PATH)
         else:
+            loader.empty()
             st.error("No data source configured. Add the [sharepoint] secrets "
                      "(or place a local workbook for dev).")
             logout_control()
             st.stop()
     except Exception as e:
+        loader.empty()
         st.error(f"Couldn't load the tracker workbook: {e}")
         logout_control()
         st.stop()
+    loader.empty()   # clear the loader once data is ready
 
     preps_all = build_preparations(ye_df, val_df)
     issues = validate_preparations(ye_df, val_df, preps_all)

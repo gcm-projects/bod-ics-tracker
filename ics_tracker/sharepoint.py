@@ -56,7 +56,7 @@ def _graph_get(path, token, **kwargs):
     return resp
 
 
-@st.cache_data(show_spinner="Loading tracker data from SharePoint…", ttl=600)
+@st.cache_data(show_spinner=False, ttl=600)
 def fetch_workbook_bytes():
     """Download the tracker workbook's bytes from SharePoint (cached 10 min).
 
