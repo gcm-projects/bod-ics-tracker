@@ -8,10 +8,10 @@ import streamlit as st
 
 from .auth import greeting, logout_control, require_login
 from .checkoff import load_checkoff, save_checkoff
-from .config import (ALL_STAGES, ASSESS_LINE_COLOR, AUDIT_LINE_COLOR,
-                     BOD_LINE_COLOR, LOCAL_WORKBOOK_PATH, PREP_AUDIT,
-                     PREP_COLORS, PREP_ORDER, PREP_VAL_1, PREP_VAL_2,
-                     PREP_YEAR_END, STAGES_BY_PREP)
+from .config import (ASSESS_LINE_COLOR, AUDIT_LINE_COLOR, BOD_LINE_COLOR,
+                     CHECKOFF_STEPS, CHECKOFF_STEPS_BY_PREP,
+                     LOCAL_WORKBOOK_PATH, PREP_AUDIT, PREP_COLORS, PREP_ORDER,
+                     PREP_VAL_1, PREP_VAL_2, PREP_YEAR_END)
 from .data import load_data
 from .model import build_blocks, build_preparations, validate_preparations
 from .parsing import _fmt
@@ -242,8 +242,9 @@ def run():
     # ----- Per-preparation check-off --------------------------------------- #
     st.markdown("---")
     st.subheader("✅ Step check-off")
-    st.caption("One row per preparation. Tick completed steps — saved to disk "
-               "and persists across runs. (Audit Draft applies to year-end only.)")
+    st.caption("One row per preparation. Tick completed milestones — saved to "
+               "disk and persists across runs. (Audit Draft Deadline applies to "
+               "year-end only.)")
 
     checkoff = load_checkoff()
     prep_state = checkoff.get("preparations", {})
@@ -256,16 +257,16 @@ def run():
         table_rows = []
         for _, inst in instances.iterrows():
             client, ptype = inst["Client"], inst["PrepType"]
-            applicable = STAGES_BY_PREP[ptype]
+            applicable = CHECKOFF_STEPS_BY_PREP[ptype]
             saved = prep_state.get(f"{client} :: {ptype}", {})
             row = {"Client": client, "Preparation": ptype}
-            for sname in ALL_STAGES:
+            for sname in CHECKOFF_STEPS:
                 row[sname] = bool(saved.get(sname, False)) if sname in applicable else False
             row["Done"] = sum(bool(row[s]) for s in applicable)
             table_rows.append(row)
 
         edit_df = pd.DataFrame(table_rows)
-        col_config = {s: st.column_config.CheckboxColumn(s) for s in ALL_STAGES}
+        col_config = {s: st.column_config.CheckboxColumn(s) for s in CHECKOFF_STEPS}
         col_config["Client"] = st.column_config.TextColumn("Client", disabled=True)
         col_config["Preparation"] = st.column_config.TextColumn(
             "Preparation", disabled=True)
@@ -274,7 +275,7 @@ def run():
         edited = st.data_editor(
             edit_df,
             column_config=col_config,
-            column_order=["Client", "Preparation", *ALL_STAGES, "Done"],
+            column_order=["Client", "Preparation", *CHECKOFF_STEPS, "Done"],
             hide_index=True,
             width="stretch",
             key="editor_prep",
@@ -283,7 +284,7 @@ def run():
         if st.button("💾 Save check-off", type="primary"):
             checkoff.setdefault("preparations", {})
             for _, r in edited.iterrows():
-                applicable = STAGES_BY_PREP[r["Preparation"]]
+                applicable = CHECKOFF_STEPS_BY_PREP[r["Preparation"]]
                 key = f"{r['Client']} :: {r['Preparation']}"
                 checkoff["preparations"][key] = {s: bool(r[s]) for s in applicable}
             save_checkoff(checkoff)

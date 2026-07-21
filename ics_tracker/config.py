@@ -60,6 +60,16 @@ STAGES_BY_PREP = {
 }
 ALL_STAGES = ["ICS Prep", "GCM Prep", "ICS Comments", "GCM Finalize", "Audit Draft"]
 
+# Milestones ticked off in the check-off table (a shorter list than the full
+# workflow stages above). "GCM Start" = ICS Prep End, "GCM Finish" = GCM
+# Finalise End. The audit deadline only exists for the year-end preparation.
+CHECKOFF_STEPS = ["GCM Start", "GCM Finish", "Audit Draft Deadline"]
+CHECKOFF_STEPS_BY_PREP = {
+    PREP_YEAR_END: ["GCM Start", "GCM Finish", "Audit Draft Deadline"],
+    PREP_VAL_1: ["GCM Start", "GCM Finish"],
+    PREP_VAL_2: ["GCM Start", "GCM Finish"],
+}
+
 # Stages that make up GCM's preparation window: from ICS Prep End (when ICS
 # hands off) through GCM Finalise End. ICS Prep (ICS's own prep) sits before
 # this window and Audit Draft (the auditor's phase) after it, so both are
