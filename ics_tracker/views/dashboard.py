@@ -19,8 +19,7 @@ def render():
         st.subheader("📊 ICS FS Tracker")
         st.write(
             "Live timeline of GCM's preparation windows per client, with board "
-            "meeting dates, audit and assessment deadlines — loaded straight "
-            "from SharePoint.")
+            "meeting dates, audit and assessment deadlines")
     with right:
         st.subheader("📈 Non-ICS FS Tracker")
         st.write("Not available yet — coming soon.")

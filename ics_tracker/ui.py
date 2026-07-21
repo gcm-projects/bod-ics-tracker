@@ -31,7 +31,7 @@ def run():
     # Explicit url_path per page: all three render functions share the name
     # `render`, so Streamlit can't derive distinct paths on its own.
     nav = st.navigation([
-        st.Page(dashboard.render, title="Main Dashboard", icon="🏠",
+        st.Page(dashboard.render, title="Dashboard", icon="🏠",
                 url_path="dashboard", default=True),
         st.Page(ics_fs.render, title="ICS FS Tracker", icon="📊",
                 url_path="ics-fs-tracker"),

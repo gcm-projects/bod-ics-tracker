@@ -16,7 +16,7 @@ STATE_FILE = os.path.join(APP_DIR, "checkoff_state.json")
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 ASSETS_DIR = os.path.join(PACKAGE_DIR, "assets")
 LOGO_DARK = os.path.join(ASSETS_DIR, "logo-white.png")   # white mark, dark theme
-LOGO_LIGHT = os.path.join(ASSETS_DIR, "logo-color.png")  # colour mark, light theme
+LOGO_LIGHT = os.path.join(ASSETS_DIR, "full-logo.png")    # colour mark, light theme
 
 EXCEL_EPOCH = pd.Timestamp("1899-12-30")
 
