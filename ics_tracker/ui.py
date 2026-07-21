@@ -12,11 +12,12 @@ from .views import dashboard, ics_fs, non_ics_fs
 
 
 def run():
-    st.set_page_config(page_title="ICS FS Timeline Tracker",
+    st.set_page_config(page_title="GCM FS Tracker",
                        page_icon="📊", layout="wide")
     require_login()  # gates EVERY page: nothing below runs until signed in
 
-    st.sidebar.title("📊 ICS FS Tracker")
+    # App-wide title: neutral, since the nav now covers ICS and Non-ICS trackers.
+    st.sidebar.title("📊 GCM FS Tracker")
 
     # Explicit url_path per page: all three render functions share the name
     # `render`, so Streamlit can't derive distinct paths on its own.
