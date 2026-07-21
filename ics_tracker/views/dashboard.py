@@ -20,7 +20,7 @@ def render():
             "meeting dates, audit and assessment deadlines — loaded straight "
             "from SharePoint.")
     with right:
-        st.subheader("🗂️ Non-ICS FS Tracker")
+        st.subheader("📈 Non-ICS FS Tracker")
         st.write("Not available yet — coming soon.")
 
     st.info("Use the navigation on the left to open a tracker.")
