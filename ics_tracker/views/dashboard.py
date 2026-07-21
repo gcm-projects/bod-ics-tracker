@@ -12,6 +12,8 @@ def render():
     st.caption("Welcome to the GCM financial-statement trackers.")
 
     st.markdown("---")
+    st.subheader("Dashboard data coming soon")
+
     left, right = st.columns(2)
     with left:
         st.subheader("📊 ICS FS Tracker")
