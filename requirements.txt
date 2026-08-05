@@ -5,3 +5,8 @@ plotly
 openpyxl
 Authlib>=1.3.2
 httpx
+# Starlette 1.4.0 added a required `thread_minimum_size` arg to GZipResponder
+# that Streamlit's gzip middleware doesn't pass, 500-ing every request and
+# taking the app down. Streamlit only caps starlette>=0.40 (no upper bound), so
+# pin below 1.4 until a Streamlit release adapts to it.
+starlette<1.4.0
