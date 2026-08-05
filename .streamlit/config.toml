@@ -6,7 +6,9 @@
 # Don't send anonymous usage statistics to Streamlit.
 gatherUsageStats = false
 
-# Optional: uncomment to pin one theme for all viewers. Left commented so the
-# viewer's own light/dark preference wins.
-# [theme]
-# base = "dark"
+# Pin the app to dark mode for all viewers. Streamlit exposes no reliable hook
+# for a per-viewer theme (st.context.theme lags; there's no CSS attribute for
+# the in-app toggle — streamlit#5009/#11920), so we fix the theme and pair it
+# with the white "GCM" logo, which is then always correct.
+[theme]
+base = "dark"

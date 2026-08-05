@@ -18,6 +18,10 @@ ASSETS_DIR = os.path.join(PACKAGE_DIR, "assets")
 LOGO_DARK = os.path.join(ASSETS_DIR, "logo-white.png")   # white mark, dark theme
 LOGO_LIGHT = os.path.join(ASSETS_DIR, "full-logo.png")    # colour mark, light theme
 
+# Full logo (emblem + white "GCM" wordmark). The app is pinned to dark
+# (config.toml), so this single mark is always the correct one.
+LOGO_FULL_DARK = os.path.join(ASSETS_DIR, "full-logo.png")
+
 EXCEL_EPOCH = pd.Timestamp("1899-12-30")
 
 # --------------------------------------------------------------------------- #
