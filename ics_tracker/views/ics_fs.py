@@ -84,15 +84,26 @@ def render():
     auditors = sorted(preps["Auditor"].dropna().unique()) if not preps.empty else []
     sel_owners = st.sidebar.multiselect("Owner", owners, default=owners)
     sel_auditors = st.sidebar.multiselect("Auditor", auditors, default=auditors)
-    client_query = st.sidebar.text_input("Search client name").strip().lower()
+
+    # Client options depend on the Owner/Auditor selection, so the dropdown only
+    # offers clients that belong to the chosen owner(s). Empty = show all.
+    client_pool = preps
+    if not client_pool.empty:
+        if sel_owners:
+            client_pool = client_pool[client_pool["Owner"].isin(sel_owners)]
+        if sel_auditors:
+            client_pool = client_pool[client_pool["Auditor"].isin(sel_auditors)]
+    clients = (sorted(client_pool["Client"].dropna().unique())
+               if not client_pool.empty else [])
+    sel_clients = st.sidebar.multiselect("Client", clients)
 
     if not preps.empty:
         if sel_owners:
             preps = preps[preps["Owner"].isin(sel_owners)]
         if sel_auditors:
             preps = preps[preps["Auditor"].isin(sel_auditors)]
-        if client_query:
-            preps = preps[preps["Client"].str.lower().str.contains(client_query)]
+        if sel_clients:
+            preps = preps[preps["Client"].isin(sel_clients)]
 
     # ----- Header + KPIs --------------------------------------------------- #
     st.title("GCM Preparation Timeline")
