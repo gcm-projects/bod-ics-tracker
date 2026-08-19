@@ -4,66 +4,25 @@ Contains the data load (SharePoint, with a local dev fallback), KPIs, the
 validation gate, the Gantt-style timeline, the step check-off and the summary.
 """
 
-import os
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from ..auth import logout_control
 from ..checkoff import load_checkoff, save_checkoff
 from ..config import (ASSESS_LINE_COLOR, AUDIT_LINE_COLOR, BOD_LINE_COLOR,
-                      CHECKOFF_STEPS, CHECKOFF_STEPS_BY_PREP,
-                      LOCAL_WORKBOOK_PATH, PREP_AUDIT, PREP_COLORS, PREP_ORDER,
-                      PREP_VAL_1, PREP_VAL_2, PREP_YEAR_END)
-from ..data import load_data
+                      CHECKOFF_STEPS, CHECKOFF_STEPS_BY_PREP, PREP_AUDIT,
+                      PREP_COLORS, PREP_ORDER, PREP_VAL_1, PREP_VAL_2,
+                      PREP_YEAR_END)
 from ..model import build_blocks, build_preparations, validate_preparations
 from ..parsing import _fmt
-from ..sharepoint import fetch_workbook_bytes, sharepoint_configured
-
-# Purple full-height loading screen shown while the workbook is fetched/parsed.
-# Self-contained HTML/CSS (own class + keyframes), so it renders reliably.
-_LOADER_HTML = """
-<div style="display:flex;flex-direction:column;align-items:center;
-            justify-content:center;min-height:65vh;gap:1.2rem">
-  <div class="ics-loader"></div>
-  <div style="color:#a78bfa;font-weight:600;font-size:1.05rem">
-    Loading tracker data…</div>
-</div>
-<style>
-.ics-loader{width:60px;height:60px;border-radius:50%;
-  border:6px solid rgba(139,92,246,.22);border-top-color:#8B5CF6;
-  animation:ics-spin .8s linear infinite}
-@keyframes ics-spin{to{transform:rotate(360deg)}}
-</style>
-"""
+from ._shared import load_frames
 
 
 def render():
     # ----- Load the tracker workbook --------------------------------------- #
-    # Primary source is SharePoint (via Microsoft Graph). A local file is the
-    # dev-only fallback used when [sharepoint] secrets aren't configured.
-    if sharepoint_configured() and st.sidebar.button("🔄 Refresh data"):
-        fetch_workbook_bytes.clear()   # force a re-fetch from SharePoint
-    loader = st.empty()
-    loader.markdown(_LOADER_HTML, unsafe_allow_html=True)  # purple spinner
-    try:
-        if sharepoint_configured():
-            ye_df, val_df = load_data(fetch_workbook_bytes())
-        elif os.path.exists(LOCAL_WORKBOOK_PATH):
-            ye_df, val_df = load_data(LOCAL_WORKBOOK_PATH)
-        else:
-            loader.empty()
-            st.error("No data source configured. Add the [sharepoint] secrets "
-                     "(or place a local workbook for dev).")
-            logout_control()
-            st.stop()
-    except Exception as e:
-        loader.empty()
-        st.error(f"Couldn't load the tracker workbook: {e}")
-        logout_control()
-        st.stop()
-    loader.empty()   # clear the loader once data is ready
+    # SharePoint is primary; a local file is the dev fallback. On failure this
+    # shows the error and stops the page (nothing below works without data).
+    ye_df, val_df = load_frames()
 
     preps_all = build_preparations(ye_df, val_df)
     issues = validate_preparations(ye_df, val_df, preps_all)

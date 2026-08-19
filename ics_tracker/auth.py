@@ -130,14 +130,27 @@ def _access_denied_screen():
         st.button("Sign out", type="primary", on_click=st.logout)
 
 
+def signed_in_name():
+    """The signed-in user's display name, or '' when not signed in.
+
+    Falls back to the email local part when no display name is present.
+    """
+    if not _auth_configured() or not getattr(st.user, "is_logged_in", False):
+        return ""
+    return (getattr(st.user, "name", None)
+            or getattr(st.user, "email", "") or "").strip()
+
+
+def first_name():
+    """The signed-in user's first name, or '' when not signed in."""
+    name = signed_in_name()
+    return name.split(" ")[0] if name else ""
+
+
 def greeting():
     """First-name greeting for the main screen, or None when not signed in."""
-    if not _auth_configured() or not getattr(st.user, "is_logged_in", False):
-        return None
-    name = (getattr(st.user, "name", None)
-            or getattr(st.user, "email", "") or "").strip()
-    first = name.split(" ")[0] if name else "there"
-    return f"Hi, {first}! 👋🏼"
+    first = first_name()
+    return f"Hi, {first}! 👋🏼" if first else None
 
 
 def logout_control():

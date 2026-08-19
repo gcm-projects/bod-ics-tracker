@@ -1,5 +1,6 @@
 """Constants and configuration for the ICS FS Process Tracker."""
 
+import glob
 import os
 
 import pandas as pd
@@ -122,6 +123,44 @@ SP_SITE_PATH = "/sites/ResourceCenter"
 SP_DRIVE_NAME = "Forms & Templates"           # the document library (Graph drive)
 SP_FILE_PATH = "ICS/Meeting Format and Tracker/Data for tracker ICS.xlsx"
 
-# Local-dev fallback: used ONLY when [sharepoint] secrets are absent and this
-# file exists (git-ignored). Lets you run locally without Graph credentials.
-LOCAL_WORKBOOK_PATH = os.path.join(APP_DIR, "data", "Final - Data for tracker ICS.xlsx")
+# The Client Allocation workbook lives in a DIFFERENT library. Its filename is
+# month-stamped ("Client Allocation - July 2026.xlsx"), so we pick the newest
+# file whose name starts with the prefix rather than hardcoding the month.
+SP_ALLOC_DRIVE_NAME = "Client Reviews"
+SP_ALLOC_FILE_PREFIX = "Client Allocation"
+SP_ALLOC_SHEET = "Client Allocations"          # the sheet holding the role columns
+
+# Local-dev fallbacks: used ONLY when [sharepoint] secrets are absent. We glob
+# the data/ folder for the newest matching workbook, so a browser re-download
+# suffix like " (1)" still resolves without a rename. (git-ignored.)
+DATA_DIR = os.path.join(APP_DIR, "data")
+LOCAL_TRACKER_GLOB = "Data for tracker ICS*.xlsx"
+LOCAL_ALLOCATION_GLOB = "Client Allocation*.xlsx"
+
+
+def newest_local(glob_pattern):
+    """Newest file in DATA_DIR matching glob_pattern, or None (local-dev only)."""
+    matches = glob.glob(os.path.join(DATA_DIR, glob_pattern))
+    return max(matches, key=os.path.getmtime) if matches else None
+
+
+# --------------------------------------------------------------------------- #
+# Client Allocation: roles and name reconciliation
+# --------------------------------------------------------------------------- #
+# Human-readable role labels shown on the dashboard. Owner comes from the
+# tracker; the three review roles come from the Client Allocation sheet.
+ROLE_OWNER = "Owner"
+ROLE_FIRST = "1st reviewer"
+ROLE_SECOND = "2nd reviewer"
+ROLE_MGMT = "Mgmt member"
+ROLE_ORDER = [ROLE_OWNER, ROLE_FIRST, ROLE_SECOND, ROLE_MGMT]
+
+# Tracker Client Name -> allocation Company Name, for the handful spelled too
+# differently to reconcile by normalisation alone (verified 2026-08-19).
+ALLOCATION_ALIASES = {
+    "Fairhaven, Ltd.": "Fairhaven Group, Ltd.",
+    "Generations": "Generations Group, Ltd.",
+    "Premier": "Premier Partners, Ltd.",
+    "Select Partners": "Select Partners Group, Ltd.",
+    "Revel, Ltd.": "Revel Re",
+}

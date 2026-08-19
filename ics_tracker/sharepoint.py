@@ -14,7 +14,8 @@ from urllib.parse import quote
 import httpx
 import streamlit as st
 
-from .config import SP_DRIVE_NAME, SP_FILE_PATH, SP_HOSTNAME, SP_SITE_PATH
+from .config import (SP_ALLOC_DRIVE_NAME, SP_ALLOC_FILE_PREFIX, SP_DRIVE_NAME,
+                     SP_FILE_PATH, SP_HOSTNAME, SP_SITE_PATH)
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 _TIMEOUT = 60
@@ -56,6 +57,23 @@ def _graph_get(path, token, **kwargs):
     return resp
 
 
+def _site_id(token):
+    """Resolve the ResourceCenter site id from hostname + server-relative path."""
+    return _graph_get(f"/sites/{SP_HOSTNAME}:{SP_SITE_PATH}", token).json()["id"]
+
+
+def _drive_id(token, site_id, drive_name):
+    """Find a document library (Graph drive) on the site by its display name."""
+    drives = _graph_get(f"/sites/{site_id}/drives", token).json()["value"]
+    drive = next((d for d in drives if d.get("name") == drive_name), None)
+    if drive is None:
+        available = ", ".join(repr(d.get("name")) for d in drives)
+        raise RuntimeError(
+            f"SharePoint library {drive_name!r} not found on this site. "
+            f"Available libraries: {available}")
+    return drive["id"]
+
+
 @st.cache_data(show_spinner=False, ttl=600)
 def fetch_workbook_bytes():
     """Download the tracker workbook's bytes from SharePoint (cached 10 min).
@@ -64,19 +82,34 @@ def fetch_workbook_bytes():
     -> download the file's content by path within that drive.
     """
     token = _access_token()
-
-    # 1. Resolve the site by hostname + server-relative path.
-    site_id = _graph_get(f"/sites/{SP_HOSTNAME}:{SP_SITE_PATH}", token).json()["id"]
-
-    # 2. Find the document library (drive) by its display name.
-    drives = _graph_get(f"/sites/{site_id}/drives", token).json()["value"]
-    drive = next((d for d in drives if d.get("name") == SP_DRIVE_NAME), None)
-    if drive is None:
-        available = ", ".join(repr(d.get("name")) for d in drives)
-        raise RuntimeError(
-            f"SharePoint library {SP_DRIVE_NAME!r} not found on this site. "
-            f"Available libraries: {available}")
-
-    # 3. Download the file content by path within the drive.
+    site_id = _site_id(token)
+    drive_id = _drive_id(token, site_id, SP_DRIVE_NAME)
     path = quote(SP_FILE_PATH, safe="/")
-    return _graph_get(f"/drives/{drive['id']}/root:/{path}:/content", token).content
+    return _graph_get(f"/drives/{drive_id}/root:/{path}:/content", token).content
+
+
+@st.cache_data(show_spinner=False, ttl=600)
+def fetch_allocation_bytes():
+    """Download the newest Client Allocation workbook from SharePoint (cached).
+
+    The file is month-stamped, so instead of a fixed path we list the
+    ``Client Reviews`` library's root and pick the most recently modified file
+    whose name starts with ``Client Allocation`` and ends in ``.xlsx``.
+    """
+    token = _access_token()
+    site_id = _site_id(token)
+    drive_id = _drive_id(token, site_id, SP_ALLOC_DRIVE_NAME)
+
+    children = _graph_get(
+        f"/drives/{drive_id}/root/children?$top=400", token).json()["value"]
+    cands = [c for c in children if "file" in c
+             and str(c.get("name", "")).startswith(SP_ALLOC_FILE_PREFIX)
+             and str(c.get("name", "")).lower().endswith(".xlsx")]
+    if not cands:
+        seen = ", ".join(repr(c.get("name")) for c in children[:25])
+        raise RuntimeError(
+            f"No {SP_ALLOC_FILE_PREFIX!r} .xlsx found in the "
+            f"{SP_ALLOC_DRIVE_NAME!r} library root. Saw: {seen}")
+    newest = max(cands, key=lambda c: c.get("lastModifiedDateTime", ""))
+    return _graph_get(
+        f"/drives/{drive_id}/items/{newest['id']}/content", token).content
