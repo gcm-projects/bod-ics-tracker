@@ -175,7 +175,7 @@ def _my_preparations(my, owner_by_client, blocks):
     st.caption(f"Next up: **{nxt['Milestone']}** for **{nxt['Client']}** "
                f"({nxt['Preparation']}) — {when}.")
 
-    show = upcoming.head(5).copy()
+    show = upcoming.copy()   # all upcoming deadlines (soonest-first, past excluded)
     show["When"] = show["Date"].dt.strftime("%b %d, %Y")
     show["In (days)"] = (show["Date"].dt.normalize() - today).dt.days
     st.dataframe(
