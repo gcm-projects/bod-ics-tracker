@@ -15,6 +15,15 @@ import streamlit as st
 # here. Case-insensitive, exact-domain match.
 ALLOWED_EMAIL_DOMAINS = ("global.ky",)
 
+# Named external partners admitted by EXACT email (not whole domains) — so it is
+# these specific people, not anyone at their firm. Their org accounts are invited
+# into GCM's tenant as Entra B2B guests; here we match either the clean `email`
+# claim or the encoded guest UPN (see _identifier_allowed). Lower-case.
+ALLOWED_EMAILS = frozenset({
+    "mhalsch@holmesmurphy.com",   # Holmes Murphy
+    "jmcbain@yourcaptive.com",    # Your Captive
+})
+
 
 def _auth_configured():
     """True only when an [auth] section is present in secrets."""
@@ -34,22 +43,29 @@ def _user_identifiers():
     return ids
 
 
-def _domain_ok(email):
-    """True if one email/UPN is a clean org-domain account (not a B2B guest).
+def _identifier_allowed(ident):
+    """True if ONE identifier grants access: an internal org-domain account, or
+    one of the named external guests (ALLOWED_EMAILS).
 
-    B2B guest UPNs look like `user_gmail.com#EXT#@yourtenant` — if the tenant
-    domain is the allowed one, that string would otherwise pass the endswith
-    check, so guests are rejected explicitly via the #EXT# marker.
+    B2B guest UPNs look like `mhalsch_holmesmurphy.com#EXT#@gcmtenant`. We never
+    treat a #EXT# UPN as an org-domain account (that was the Gmail-guest bypass),
+    but we DO admit the specific invited guests by comparing the UPN's encoded
+    prefix to each allowlisted email (its '@' becomes '_'). That comparison is
+    deterministic and can only ever equal the hardcoded list, so it can't widen
+    access — and it works even if the tenant doesn't emit a clean `email` claim.
     """
-    email = str(email or "").strip().lower()
-    if "#ext#" in email:
-        return False
-    return email.endswith(tuple(f"@{d.lower()}" for d in ALLOWED_EMAIL_DOMAINS))
+    ident = str(ident or "").strip().lower()
+    if "#ext#" in ident:
+        prefix = ident.split("#ext#", 1)[0]
+        return any(prefix == e.replace("@", "_") for e in ALLOWED_EMAILS)
+    if ident in ALLOWED_EMAILS:                      # clean `email` claim match
+        return True
+    return ident.endswith(tuple(f"@{d.lower()}" for d in ALLOWED_EMAIL_DOMAINS))
 
 
 def _email_allowed():
-    """True only if the signed-in user has an allowed org-domain identifier."""
-    return any(_domain_ok(i) for i in _user_identifiers())
+    """True if the signed-in user has an allowed internal or named-guest identity."""
+    return any(_identifier_allowed(i) for i in _user_identifiers())
 
 
 def require_login():
