@@ -5,6 +5,7 @@ with no [auth] block and the app is open; add the secrets later and the gate
 switches on automatically — no code change needed.
 """
 
+import hmac
 import html
 
 import streamlit as st
@@ -23,6 +24,9 @@ ALLOWED_EMAILS = frozenset({
     "mhalsch@holmesmurphy.com",   # Holmes Murphy
     "jmcbain@yourcaptive.com",    # Your Captive
 })
+
+# Session-state flag marking an active external-access (shared-code) session.
+_EXT_SESSION_KEY = "_external_access_label"
 
 
 def _auth_configured():
@@ -69,9 +73,18 @@ def _email_allowed():
 
 
 def require_login():
-    """Block the app behind Microsoft sign-in when auth is configured."""
+    """Block the app behind sign-in when auth is configured.
+
+    Two ways past the gate: a Microsoft account on the allowed domain (or a named
+    guest), OR a valid external access code — a code-gated path for invited
+    external partners who aren't in GCM's Entra directory (see
+    _external_signin_form).
+    """
     if not _auth_configured():
         return  # auth not set up yet -> app stays open (deploy-first mode)
+    # External partners: a shared-code session (validated at sign-in below).
+    if st.session_state.get(_EXT_SESSION_KEY):
+        return
     # Fail closed: if login state is unavailable for any reason, require sign-in.
     if not getattr(st.user, "is_logged_in", False):
         _login_screen()
@@ -120,6 +133,8 @@ def _login_screen():
     with bc:
         st.button("🔐 Log in with Microsoft", type="primary",
                   width="stretch", on_click=st.login)
+    # External partner access (code-gated) — only renders when configured.
+    _external_signin_form()
 
 
 def _access_denied_screen():
@@ -144,6 +159,70 @@ def _access_denied_screen():
             "work account.</p></div>",
             unsafe_allow_html=True)
         st.button("Sign out", type="primary", on_click=st.logout)
+
+
+# --------------------------------------------------------------------------- #
+# External partner access (shared access code)
+# --------------------------------------------------------------------------- #
+# A deliberately simple, OPT-IN path for a small number of invited external
+# partners who aren't in GCM's Entra directory. It is NOT a public bypass: it
+# requires a strong shared code stored server-side in the [external_access]
+# secrets (never in the repo), handed to partners out of band. The control is
+# absent entirely when that section is. Weaker than Microsoft sign-in (shared
+# secret, no MFA, no per-user identity), so treat it as a temporary measure and
+# rotate the code if it leaks.
+def _external_codes():
+    """{label: code} from the [external_access] secrets, or {} when unset/off."""
+    try:
+        if "external_access" not in st.secrets:
+            return {}
+        return {str(k): str(v)
+                for k, v in dict(st.secrets["external_access"]).items()}
+    except Exception:
+        return {}
+
+
+def _match_code(entered, codes):
+    """The label whose code matches `entered` (constant-time), or None."""
+    entered = (entered or "").strip()
+    if not entered:
+        return None
+    for label, code in codes.items():
+        if hmac.compare_digest(entered, str(code).strip()):
+            return label
+    return None
+
+
+def _external_logout():
+    """Clear an external-access session (callback for the Log out button)."""
+    st.session_state.pop(_EXT_SESSION_KEY, None)
+
+
+def _external_signin_form():
+    """Code-gated 'External sign in' control on the login screen.
+
+    Renders only when [external_access] codes are configured. A correct code
+    starts an external session (kept in session_state for this browser session
+    only); an empty/wrong code shows an error.
+    """
+    codes = _external_codes()
+    if not codes:
+        return
+    _, mid, _ = st.columns([1, 2, 1])
+    with mid:
+        with st.expander("External sign in"):
+            st.caption("For invited external partners only — enter your "
+                       "access code.")
+            with st.form("external_signin", clear_on_submit=True):
+                code = st.text_input("Access code", type="password")
+                submitted = st.form_submit_button("Sign in", type="primary")
+            if submitted:
+                label = _match_code(code, codes)
+                if label:
+                    st.session_state[_EXT_SESSION_KEY] = label
+                    st.rerun()
+                else:
+                    st.error("Invalid access code.")
 
 
 def signed_in_name():
@@ -176,9 +255,16 @@ def logout_control():
     running Streamlit version, the block simply sits at the end of the sidebar.
     Call this AFTER all other sidebar content so it is the last element.
     """
-    if not _auth_configured() or not getattr(st.user, "is_logged_in", False):
+    if not _auth_configured():
         return
-    who = getattr(st.user, "name", None) or getattr(st.user, "email", "account")
+    ext = st.session_state.get(_EXT_SESSION_KEY)
+    if not ext and not getattr(st.user, "is_logged_in", False):
+        return
+    if ext:
+        who, on_click = f"{ext} (external)", _external_logout
+    else:
+        who = getattr(st.user, "name", None) or getattr(st.user, "email", "account")
+        on_click = st.logout
     # Target ONLY this container via its deterministic `st-key-*` class, so just
     # the logout block is pinned to the bottom-left; the title + uploader stay
     # in normal flow at the top.
@@ -187,4 +273,4 @@ def logout_control():
         unsafe_allow_html=True)
     with st.sidebar.container(key="ics_logout"):
         st.caption(f"Signed in as **{who}**")
-        st.button("Log out", on_click=st.logout)
+        st.button("Log out", on_click=on_click)
